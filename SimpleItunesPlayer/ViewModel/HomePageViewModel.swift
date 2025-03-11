@@ -7,8 +7,8 @@
 
 import Foundation
 
-class HomePageViewModel<Adapter: SongAdapter> where Adapter.Response: Decodable {
-    
+final class HomePageViewModel<Adapter: SongAdapter> where Adapter.Response: Decodable {
+
     private let songsFetcherService: SongsFetcherService
     private let adapter: Adapter
     
@@ -17,10 +17,7 @@ class HomePageViewModel<Adapter: SongAdapter> where Adapter.Response: Decodable 
     var onLoadingStateChanged: ((Bool) -> Void)?
     private(set) var songs: [Song] = []
     
-    init(
-        songsFetcherService: SongsFetcherService,
-        adapter: Adapter
-    ) {
+    init(songsFetcherService: SongsFetcherService, adapter: Adapter) {
         self.songsFetcherService = songsFetcherService
         self.adapter = adapter
     }
@@ -38,8 +35,24 @@ class HomePageViewModel<Adapter: SongAdapter> where Adapter.Response: Decodable 
                 self.songs = songs
                 self.onSongsUpdated?()
             case .failure(let error):
-                self.onSongsSearchError?(error.localizedDescription)
+                let errorMessage = self.getErrorMessage(from: error)
+                self.onSongsSearchError?(errorMessage)
             }
+        }
+    }
+    
+    private func getErrorMessage(from error: Error) -> String {
+        if let networkError = error as? URLError {
+            switch networkError.code {
+            case .notConnectedToInternet:
+                return "No internet connection. Please check your network settings."
+            case .timedOut:
+                return "The request timed out. Please try again."
+            default:
+                return "An error occurred. Please try again later."
+            }
+        } else {
+            return "An error occurred. Please try again later."
         }
     }
 }
