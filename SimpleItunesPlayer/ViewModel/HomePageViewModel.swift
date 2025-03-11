@@ -12,9 +12,9 @@ final class HomePageViewModel<Adapter: SongAdapter> where Adapter.Response: Deco
     private let songsFetcherService: SongsFetcherService
     private let adapter: Adapter
     
-    var onSongsUpdated: (() -> Void)?
-    var onSongsSearchError: ((String) -> Void)?
-    var onLoadingStateChanged: ((Bool) -> Void)?
+    @MainActor var onSongsUpdated: (() -> Void)?
+    @MainActor var onSongsSearchError: ((String) -> Void)?
+    @MainActor var onLoadingStateChanged: ((Bool) -> Void)?
     private(set) var songs: [Song] = []
     
     init(songsFetcherService: SongsFetcherService, adapter: Adapter) {
@@ -23,20 +23,28 @@ final class HomePageViewModel<Adapter: SongAdapter> where Adapter.Response: Deco
     }
     
     func searchSongs(term: String) {
-        onLoadingStateChanged?(true)
+        Task { @MainActor in
+            onLoadingStateChanged?(true)
+        }
         
         songsFetcherService.fetchSongs(searchTerm: term, adapter: adapter) { [weak self] result in
             guard let self = self else { return }
             
-            self.onLoadingStateChanged?(false)
+            Task { @MainActor in
+                self.onLoadingStateChanged?(false)
+            }
             
             switch result {
             case .success(let songs):
                 self.songs = songs
-                self.onSongsUpdated?()
+                Task { @MainActor in
+                    self.onSongsUpdated?()
+                }
             case .failure(let error):
                 let errorMessage = self.getErrorMessage(from: error)
-                self.onSongsSearchError?(errorMessage)
+                Task { @MainActor in
+                    self.onSongsSearchError?(errorMessage)
+                }
             }
         }
     }

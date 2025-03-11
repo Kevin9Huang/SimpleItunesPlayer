@@ -42,6 +42,33 @@ final class HomePageViewController: UIViewController {
         return indicator
     }()
     
+    private let errorView: UIView = {
+        let view = UIView()
+        view.backgroundColor = .white
+        view.isHidden = true
+        view.translatesAutoresizingMaskIntoConstraints = false
+        return view
+    }()
+    
+    private let errorImageView: UIImageView = {
+        let imageView = UIImageView()
+        imageView.image = UIImage(systemName: "exclamationmark.triangle.fill")
+        imageView.tintColor = .systemRed
+        imageView.contentMode = .scaleAspectFit
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        return imageView
+    }()
+    
+    private let errorLabel: UILabel = {
+        let label = UILabel()
+        label.textAlignment = .center
+        label.numberOfLines = 0
+        label.textColor = .systemRed
+        label.font = UIFont.systemFont(ofSize: 16)
+        label.translatesAutoresizingMaskIntoConstraints = false
+        return label
+    }()
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
@@ -56,6 +83,10 @@ final class HomePageViewController: UIViewController {
         view.addSubview(searchButton)
         view.addSubview(tableView)
         view.addSubview(activityIndicator)
+        view.addSubview(errorView)
+        
+        errorView.addSubview(errorImageView)
+        errorView.addSubview(errorLabel)
         
         NSLayoutConstraint.activate([
             searchTextField.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 16),
@@ -73,7 +104,21 @@ final class HomePageViewController: UIViewController {
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
             
             activityIndicator.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            activityIndicator.centerYAnchor.constraint(equalTo: view.centerYAnchor)
+            activityIndicator.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            
+            errorView.topAnchor.constraint(equalTo: searchTextField.bottomAnchor, constant: 16),
+            errorView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            errorView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            errorView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            
+            errorImageView.centerXAnchor.constraint(equalTo: errorView.centerXAnchor),
+            errorImageView.centerYAnchor.constraint(equalTo: errorView.centerYAnchor, constant: -20),
+            errorImageView.widthAnchor.constraint(equalToConstant: 60),
+            errorImageView.heightAnchor.constraint(equalToConstant: 60),
+            
+            errorLabel.topAnchor.constraint(equalTo: errorImageView.bottomAnchor, constant: 16),
+            errorLabel.leadingAnchor.constraint(equalTo: errorView.leadingAnchor, constant: 16),
+            errorLabel.trailingAnchor.constraint(equalTo: errorView.trailingAnchor, constant: -16)
         ])
         
         searchButton.addTarget(self, action: #selector(searchButtonTapped), for: .touchUpInside)
@@ -85,15 +130,19 @@ final class HomePageViewController: UIViewController {
         viewModel = HomePageViewModel(songsFetcherService: songsFetcherService, adapter: iTunesAdapter)
         
         viewModel.onSongsUpdated = { [weak self] in
-            DispatchQueue.main.async {
-                self?.tableView.reloadData()
-            }
+            self?.tableView.isHidden = false
+            self?.errorView.isHidden = true
+            self?.tableView.reloadData()
+        }
+        
+        viewModel.onSongsSearchError = { [weak self] errorMessage in
+            self?.tableView.isHidden = true
+            self?.errorView.isHidden = false
+            self?.errorLabel.text = errorMessage
         }
         
         viewModel.onLoadingStateChanged = { [weak self] isLoading in
-            DispatchQueue.main.async {
-                isLoading ? self?.activityIndicator.startAnimating() : self?.activityIndicator.stopAnimating()
-            }
+            isLoading ? self?.activityIndicator.startAnimating() : self?.activityIndicator.stopAnimating()
         }
     }
     
