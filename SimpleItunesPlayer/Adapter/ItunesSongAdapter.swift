@@ -20,7 +20,7 @@ struct ITunesSong: Codable {
     let previewUrl: String
 }
 
-class ITunesSongAdapter: SongAdapter {
+final class ITunesSongAdapter: SongAdapter {
     typealias Response = ITunesSongResponse
     
     func adapt(response: Response) -> [Song] {
