@@ -73,27 +73,31 @@ final class HomePageViewModelTests: XCTestCase {
             Song(name: "Song 1", artist: "Artist 1", album: "Album 1", thumbnailUrl: "url1", previewUrl: "url1"),
             Song(name: "Song 2", artist: "Artist 2", album: "Album 2", thumbnailUrl: "url2", previewUrl: "url2")
         ]
-        let sut = makeSUT(result: .success(expectedSongs))
+        var sut: HomePageViewModel<MockSongAdapter>? = makeSUT(result: .success(expectedSongs))
 
         let expectationUpdate = expectation(description: "Songs should be updated")
-        sut.onSongsUpdated = {
-            XCTAssertEqual(sut.songs, expectedSongs)
+        sut?.onSongsUpdated = {
+            XCTAssertEqual(sut?.songs, expectedSongs)
             expectationUpdate.fulfill()
         }
 
         let expectationLoading = expectation(description: "Loading state should be updated")
         var loadingStates: [Bool] = []
-        sut.onLoadingStateChanged = { isLoading in
+        sut?.onLoadingStateChanged = { isLoading in
             loadingStates.append(isLoading)
             if loadingStates.count == 2 {
                 expectationLoading.fulfill()
             }
         }
 
-        sut.searchSongs(term: "test")
+        sut?.searchSongs(term: "test")
 
         wait(for: [expectationUpdate, expectationLoading], timeout: 1.0)
         XCTAssertEqual(loadingStates, [true, false])
+        
+        sut = nil
+        //Currently there is memory leak on HomePageViewModel on this test case.
+        //But currently it is too hard to detect it, so I only set it to nil for now.
     }
     
     @MainActor
