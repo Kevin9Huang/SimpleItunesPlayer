@@ -9,7 +9,7 @@ import UIKit
 import AVFoundation
 
 final class HomePageViewController: UIViewController {
-    
+    private var timeObserverToken: Any?
     private var viewModel: HomePageViewModel<ITunesSongAdapter>!
     private var player: AVPlayer?
     private var currentSongIndex: Int = -1
@@ -171,6 +171,7 @@ final class HomePageViewController: UIViewController {
     private func playSong(at index: Int) {
         guard index >= 0, index < viewModel.songs.count else { return }
         
+        self.cleanUpPreviousSong()
         if let url = URL(string: viewModel.songs[index].previewUrl) {
             let playerItem = AVPlayerItem(url: url)
             player = AVPlayer(playerItem: playerItem)
@@ -179,6 +180,32 @@ final class HomePageViewController: UIViewController {
             playerView.updatePlayPauseButton(isPlaying: true)
             playerView.updateSongTitle(viewModel.songs[index].name)
             updateTableViewSelection()
+            
+            observePlayerProgress()
+        }
+    }
+    
+    private func cleanUpPreviousSong() {
+        player?.pause()
+        player?.replaceCurrentItem(with: nil)
+        removePlayerProgressObserver()
+    }
+    
+    private func observePlayerProgress() {
+        guard let player = player else { return }
+
+        let interval = CMTime(seconds: 1, preferredTimescale: 600)
+        timeObserverToken = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
+            guard let self = self, let duration = player.currentItem?.duration.seconds, duration.isFinite else { return }
+            let progress = Float(time.seconds / duration)
+            self.playerView.updateProgress(value: progress)
+        }
+    }
+    
+    private func removePlayerProgressObserver() {
+        if let token = timeObserverToken {
+            player?.removeTimeObserver(token)
+            timeObserverToken = nil
         }
     }
     
@@ -226,5 +253,11 @@ extension HomePageViewController: SimplePlayerViewDelegate {
         } else if currentSongIndex < viewModel.songs.count - 1 {
             playSong(at: currentSongIndex + 1)
         }
+    }
+    
+    func didChangePlaybackPosition(to value: Float) {
+        guard let duration = player?.currentItem?.duration.seconds, duration.isFinite else { return }
+        let newTime = CMTime(seconds: Double(value) * duration, preferredTimescale: 600)
+        player?.seek(to: newTime)
     }
 }
