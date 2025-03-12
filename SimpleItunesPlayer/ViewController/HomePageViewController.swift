@@ -6,10 +6,13 @@
 //
 
 import UIKit
+import AVFoundation
 
 final class HomePageViewController: UIViewController {
     
     private var viewModel: HomePageViewModel<ITunesSongAdapter>!
+    private var player: AVPlayer?
+    private var currentSongIndex: Int = -1
     
     private let searchTextField: UITextField = {
         let textField = UITextField()
@@ -69,22 +72,28 @@ final class HomePageViewController: UIViewController {
         return label
     }()
     
+    private let playerView: SimplePlayerView = {
+        let playerView = SimplePlayerView()
+        playerView.translatesAutoresizingMaskIntoConstraints = false
+        return playerView
+    }()
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
         setupViewModel()
         setupTableView()
+        setupPlayerView()
     }
     
     private func setupUI() {
         view.backgroundColor = .white
-        
         view.addSubview(searchTextField)
         view.addSubview(searchButton)
         view.addSubview(tableView)
         view.addSubview(activityIndicator)
         view.addSubview(errorView)
-        
+        view.addSubview(playerView)
         errorView.addSubview(errorImageView)
         errorView.addSubview(errorLabel)
         
@@ -92,33 +101,31 @@ final class HomePageViewController: UIViewController {
             searchTextField.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 16),
             searchTextField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
             searchTextField.trailingAnchor.constraint(equalTo: searchButton.leadingAnchor, constant: -8),
-            
             searchButton.centerYAnchor.constraint(equalTo: searchTextField.centerYAnchor),
             searchButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
             searchButton.widthAnchor.constraint(equalToConstant: 80),
             searchButton.heightAnchor.constraint(equalTo: searchTextField.heightAnchor),
-            
             tableView.topAnchor.constraint(equalTo: searchTextField.bottomAnchor, constant: 16),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-            
+            tableView.bottomAnchor.constraint(equalTo: playerView.topAnchor),
             activityIndicator.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             activityIndicator.centerYAnchor.constraint(equalTo: view.centerYAnchor),
-            
             errorView.topAnchor.constraint(equalTo: searchTextField.bottomAnchor, constant: 16),
             errorView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             errorView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            errorView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-            
+            errorView.bottomAnchor.constraint(equalTo: playerView.topAnchor),
             errorImageView.centerXAnchor.constraint(equalTo: errorView.centerXAnchor),
             errorImageView.centerYAnchor.constraint(equalTo: errorView.centerYAnchor, constant: -20),
             errorImageView.widthAnchor.constraint(equalToConstant: 60),
             errorImageView.heightAnchor.constraint(equalToConstant: 60),
-            
             errorLabel.topAnchor.constraint(equalTo: errorImageView.bottomAnchor, constant: 16),
             errorLabel.leadingAnchor.constraint(equalTo: errorView.leadingAnchor, constant: 16),
-            errorLabel.trailingAnchor.constraint(equalTo: errorView.trailingAnchor, constant: -16)
+            errorLabel.trailingAnchor.constraint(equalTo: errorView.trailingAnchor, constant: -16),
+            playerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            playerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            playerView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
+            playerView.heightAnchor.constraint(equalToConstant: 80)
         ])
         
         searchButton.addTarget(self, action: #selector(searchButtonTapped), for: .touchUpInside)
@@ -152,9 +159,31 @@ final class HomePageViewController: UIViewController {
         tableView.register(SongTableViewCell.self, forCellReuseIdentifier: "SongTableViewCell")
     }
     
+    private func setupPlayerView() {
+        playerView.delegate = self
+    }
+    
     @objc private func searchButtonTapped() {
         guard let searchTerm = searchTextField.text, !searchTerm.isEmpty else { return }
         viewModel.searchSongs(term: searchTerm)
+    }
+    
+    private func playSong(at index: Int) {
+        guard index >= 0, index < viewModel.songs.count else { return }
+        
+        if let url = URL(string: viewModel.songs[index].previewUrl) {
+            let playerItem = AVPlayerItem(url: url)
+            player = AVPlayer(playerItem: playerItem)
+            player?.play()
+            currentSongIndex = index
+            playerView.updatePlayPauseButton(isPlaying: true)
+            playerView.updateSongTitle(viewModel.songs[index].name)
+            updateTableViewSelection()
+        }
+    }
+    
+    private func updateTableViewSelection() {
+        tableView.selectRow(at: IndexPath(row: currentSongIndex, section: 0), animated: true, scrollPosition: .none)
     }
 }
 
@@ -169,5 +198,33 @@ extension HomePageViewController: UITableViewDelegate, UITableViewDataSource {
         cell.configure(with: song)
         return cell
     }
+    
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        playSong(at: indexPath.row)
+    }
 }
 
+extension HomePageViewController: SimplePlayerViewDelegate {
+    func didTapPlayPause() {
+        if player?.rate == 0 {
+            player?.play()
+            playerView.updatePlayPauseButton(isPlaying: true)
+        } else {
+            player?.pause()
+            playerView.updatePlayPauseButton(isPlaying: false)
+        }
+    }
+    
+    func didTapPrevious() {
+        guard currentSongIndex > 0 else { return }
+        playSong(at: currentSongIndex - 1)
+    }
+    
+    func didTapNext() {
+        if currentSongIndex == -1 {
+            playSong(at: 0)
+        } else if currentSongIndex < viewModel.songs.count - 1 {
+            playSong(at: currentSongIndex + 1)
+        }
+    }
+}
