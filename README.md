@@ -41,6 +41,13 @@ Run unit tests with:
 ```sh
 Cmd + U (in Xcode)
 ```
+
+## Screenshots
+![Home Screen](Screenshot/home.jpeg)
+
+## 🏃 How to Run
+There is `SimpleItunesPlayer.app` that can be pasted to simulator to test on simulator.
+
 ### 📋 Mock Testing Included:
 - `MockSongsFetcherService`
 - `MockSongAdapter`
