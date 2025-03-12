@@ -7,7 +7,7 @@
 
 import Foundation
 
-final class SongsFetcherService {
+class SongsFetcherService {
     private let networkService: NetworkService
     
     init(networkService: NetworkService = URLSessionNetworkService()) {
