@@ -12,10 +12,10 @@ protocol SimplePlayerViewDelegate: AnyObject {
     func didTapPlayPause()
     func didTapPrevious()
     func didTapNext()
+    func didChangePlaybackPosition(to value: Float)
 }
 
-class SimplePlayerView: UIView {
-    
+final class SimplePlayerView: UIView {
     weak var delegate: SimplePlayerViewDelegate?
     
     private let playPauseButton: UIButton = {
@@ -50,6 +50,15 @@ class SimplePlayerView: UIView {
         return label
     }()
     
+    private let progressSlider: UISlider = {
+        let slider = UISlider()
+        slider.minimumValue = 0
+        slider.maximumValue = 1
+        slider.value = 0
+        slider.translatesAutoresizingMaskIntoConstraints = false
+        return slider
+    }()
+    
     override init(frame: CGRect) {
         super.init(frame: frame)
         setupUI()
@@ -69,20 +78,25 @@ class SimplePlayerView: UIView {
         addSubview(playPauseButton)
         addSubview(nextButton)
         addSubview(songTitleLabel)
+        addSubview(progressSlider)
         
         NSLayoutConstraint.activate([
             previousButton.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
-            previousButton.centerYAnchor.constraint(equalTo: centerYAnchor),
+            previousButton.centerYAnchor.constraint(equalTo: centerYAnchor, constant: -10),
             
             playPauseButton.centerXAnchor.constraint(equalTo: centerXAnchor),
-            playPauseButton.centerYAnchor.constraint(equalTo: centerYAnchor),
+            playPauseButton.centerYAnchor.constraint(equalTo: centerYAnchor, constant: -10),
             
             nextButton.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
-            nextButton.centerYAnchor.constraint(equalTo: centerYAnchor),
+            nextButton.centerYAnchor.constraint(equalTo: centerYAnchor, constant: -10),
             
             songTitleLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
             songTitleLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
-            songTitleLabel.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -8)
+            songTitleLabel.topAnchor.constraint(equalTo: topAnchor, constant: 8),
+            
+            progressSlider.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
+            progressSlider.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
+            progressSlider.topAnchor.constraint(equalTo: playPauseButton.bottomAnchor, constant: 8)
         ])
     }
     
@@ -90,6 +104,7 @@ class SimplePlayerView: UIView {
         playPauseButton.addTarget(self, action: #selector(playPauseButtonTapped), for: .touchUpInside)
         previousButton.addTarget(self, action: #selector(previousButtonTapped), for: .touchUpInside)
         nextButton.addTarget(self, action: #selector(nextButtonTapped), for: .touchUpInside)
+        progressSlider.addTarget(self, action: #selector(sliderValueChanged), for: .valueChanged)
     }
     
     @objc private func playPauseButtonTapped() {
@@ -104,6 +119,10 @@ class SimplePlayerView: UIView {
         delegate?.didTapNext()
     }
     
+    @objc private func sliderValueChanged() {
+        delegate?.didChangePlaybackPosition(to: progressSlider.value)
+    }
+    
     func updatePlayPauseButton(isPlaying: Bool) {
         let imageName = isPlaying ? "pause.fill" : "play.fill"
         playPauseButton.setImage(UIImage(systemName: imageName), for: .normal)
@@ -111,5 +130,9 @@ class SimplePlayerView: UIView {
     
     func updateSongTitle(_ title: String) {
         songTitleLabel.text = title
+    }
+    
+    func updateProgress(value: Float) {
+        progressSlider.value = value
     }
 }
